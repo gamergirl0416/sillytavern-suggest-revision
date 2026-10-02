@@ -110,15 +110,18 @@ function refreshActions() {
         let button = block.querySelector('.suggest-revision-action');
         if (!message || message.is_user || message.is_system || !message.mes?.trim()) { button?.remove(); continue; }
         if (!button) {
-            const host = block.querySelector('.extraMesButtons') ?? block.querySelector('.mes_buttons');
+            // Keep Suggest in the main action row; the expanded action tray can
+            // be hidden or clipped on mobile.
+            const host = block.querySelector('.mes_buttons');
             if (!host) continue;
             button = document.createElement('button');
             button.type = 'button';
-            button.className = 'suggest-revision-action menu_button';
-            button.textContent = 'Suggest';
+            button.className = 'suggest-revision-action mes_button';
+            button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M5.5 8a7 7 0 0 1 11.6-3L20 8M4 16l2.9 3A7 7 0 0 0 18.5 16"/></svg>`;
             button.title = 'Revise this response while preserving unaffected text';
+            button.setAttribute('aria-label', 'Suggest changes to this response');
             button.addEventListener('click', event => { event.stopPropagation(); void openSuggest(Number(block.getAttribute('mesid'))); });
-            host.append(button);
+            host.prepend(button);
         }
         button.disabled = busy;
     }
@@ -127,7 +130,7 @@ function refreshActions() {
 function initialize() {
     const ctx = context();
     const panel = document.createElement('div');
-    panel.innerHTML = `<div class="inline-drawer"><div class="inline-drawer-toggle inline-drawer-header"><b>Suggest Revision</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div><div class="inline-drawer-content"><p>Open an assistant message’s actions and choose Suggest. Uses the current connection.</p><label>Default revision strength<select class="text_pole" data-setting="strength"><option value="minimal">Minimal</option><option value="moderate">Moderate</option><option value="free">Rewrite freely</option></select></label><label>Maximum revision output tokens<input class="text_pole" type="number" min="256" max="16384" step="1" data-setting="tokens"></label><p>Allow enough tokens for the complete reply. No suggestion history is saved.</p></div></div>`;
+    panel.innerHTML = `<div class="inline-drawer"><div class="inline-drawer-toggle inline-drawer-header"><b>Suggest Revision</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div><div class="inline-drawer-content"><p>Click the circular-arrow icon in an assistant message’s action row to suggest changes. Uses the current connection.</p><label>Default revision strength<select class="text_pole" data-setting="strength"><option value="minimal">Minimal</option><option value="moderate">Moderate</option><option value="free">Rewrite freely</option></select></label><label>Maximum revision output tokens<input class="text_pole" type="number" min="256" max="16384" step="1" data-setting="tokens"></label><p>Allow enough tokens for the complete reply. No suggestion history is saved.</p></div></div>`;
     for (const field of panel.querySelectorAll('[data-setting]')) {
         field.value = settings()[field.dataset.setting];
         field.addEventListener('change', () => { settings()[field.dataset.setting] = field.value; ctx.saveSettingsDebounced(); });
