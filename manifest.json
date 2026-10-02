@@ -1,0 +1,11 @@
+{
+    "display_name": "Suggest Revision",
+    "loading_order": 110,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Personal extension",
+    "version": "0.1.0",
+    "homePage": ""
+}

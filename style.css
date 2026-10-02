@@ -1,0 +1,7 @@
+.suggest-form { text-align: left; }
+.suggest-form label { display: block; margin: 0.75em 0; }
+.suggest-form textarea { width: 100%; }
+.suggest-original { height: 30vh; resize: vertical; }
+.suggest-input { min-height: 6em; }
+.suggest-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 65vh; overflow: auto; text-align: left; }
+.suggest-revision-action { font-size: 0.85em; padding: 3px 6px; margin: 0; }
