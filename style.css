@@ -34,3 +34,9 @@
 .suggest-revision-action:hover, .suggest-revision-action:focus-visible { opacity: 1; }
 .suggest-revision-action:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
 .suggest-revision-action:disabled { opacity: 0.3; cursor: wait; }
+.suggest-revising .suggest-revision-action:disabled { opacity: 0.65; }
+.suggest-revising .suggest-revision-action svg { animation: suggest-revision-spin 1.2s linear infinite; }
+@keyframes suggest-revision-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .suggest-revising .suggest-revision-action svg { animation: none; }
+}

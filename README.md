@@ -1,4 +1,4 @@
-# Suggest Revision v0.1.0
+# Suggest Revision v0.1.2
 
 A standalone SillyTavern extension for Kindroid-style targeted revision of an assistant response. **Minimal** is the default: the model is asked to change only what your suggestion requires and copy unaffected text verbatim. The complete revised reply becomes a new active swipe; the original stays recoverable.
 
@@ -6,7 +6,7 @@ A standalone SillyTavern extension for Kindroid-style targeted revision of an as
 
 Copy this folder's `manifest.json`, `index.js`, `revision.js`, and `style.css` directly into `public/scripts/extensions/third-party/suggest-revision/` in your actual SillyTavern installation, then reload. No build, npm install, or separate API key is needed. This workspace is an extension source workspace, not the running SillyTavern installation. Persona Reply can remain installed separately.
 
-Open an assistant message's expanded actions (the ellipsis) and click **Suggest**. Read the original, enter your correction, choose Minimal/Moderate/Rewrite freely, then click Suggest. Cancel leaves everything untouched. Use normal swipe controls to recover earlier versions. Older assistant messages are supported; editing an older response does not regenerate downstream messages.
+Click the compact circular-arrow icon in an assistant message's main action row. Read the original, enter your correction, choose Minimal/Moderate/Rewrite freely, then click Suggest. Cancel leaves everything untouched. Use normal swipe controls to recover earlier versions. Older assistant messages are supported; editing an older response does not regenerate downstream messages.
 
 Extensions → Suggest Revision saves your default strength and maximum output token allowance. Set enough output tokens for the entire response. Suggestions are not saved in settings or message metadata.
 
@@ -18,7 +18,7 @@ Inspected official SillyTavern `release` source on October 2, 2026:
 - [Native generation and swipe structure](https://github.com/SillyTavern/SillyTavern/blob/release/public/script.js): `generateRaw`, `saveReply`, `ensureSwipes`, `updateMessageBlock`.
 - [Native popups](https://github.com/SillyTavern/SillyTavern/blob/release/public/scripts/popup.js).
 
-Requires a recent SillyTavern exposing these APIs; older versions are not verified. No core files are modified. Message action insertion uses `.mes`, `mesid`, and `.extraMesButtons` (fallback `.mes_buttons`) and observes lazy rendering. This DOM coupling may need adjustment after upstream UI changes.
+Requires a recent SillyTavern exposing these APIs; older versions are not verified. No core files are modified. Message action insertion uses `.mes`, `mesid`, and `.mes_buttons` and observes lazy rendering. This DOM coupling may need adjustment after upstream UI changes.
 
 There is no exposed dedicated append-swipe API. The extension appends native `swipes`/`swipe_info`, retains the active original and metadata, selects the appended version, rerenders through `updateMessageBlock`, refreshes swipe controls, saves, and emits `MESSAGE_SWIPED`. It does not emit a fake new-message event. Old generated reasoning/display text/token counts are removed from the revised version so stale content is not displayed. Existing unrelated swipe metadata is retained. If saving fails, the revision may remain in memory; the original remains in the swipe array. Inspect the error and save the chat before reloading.
 
@@ -43,3 +43,9 @@ Manual checklist:
 - Switch chats and back, edit/swipe a target, or begin normal generation while a request is pending. Confirm the result cannot overwrite changed chat data.
 - Confirm suggestions do not appear in exported chat, Author's Note, character card, summary inputs, or persistent extension prompts.
 - Check light/dark themes, mobile popup scrolling, long replies/output allowance, and normal regenerate/swipe after Suggest.
+
+
+## Non-blocking progress (v0.1.2)
+
+After submitting, the suggestion dialog closes and the target message's circular-arrow icon spins. The chat remains interactive with no progress popup, dimming, or scroll lock. Existing busy logic prevents concurrent Suggest requests. The spinner clears on completion, errors, or detected chat/message changes. Reduced-motion preferences disable rotation. Stale results retain the existing copyable-preview safety behavior.
+

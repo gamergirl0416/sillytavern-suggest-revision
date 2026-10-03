@@ -5,6 +5,9 @@ const context = () => SillyTavern.getContext();
 const settings = () => context().extensionSettings.suggestRevision ??= { strength: 'minimal', tokens: 4096 };
 let busy = false;
 let epoch = 0;
+let pendingTarget = null;
+let progressLabel = '';
+const progressBlocks = new Set();
 const notify = (text, error = false) => globalThis.toastr?.[error ? 'error' : 'info'](text, 'Suggest Revision', { escapeHtml: true, timeOut: error ? 15000 : 5000 });
 const active = () => typeof tavern.isGenerating === 'function' ? tavern.isGenerating() : Boolean(tavern.is_send_press || document.body.dataset.generating === 'true');
 const editing = () => Boolean(document.querySelector('#curEditTextarea'));
@@ -22,23 +25,41 @@ function referenceFor(ctx, index) {
     };
 }
 
-async function revise(target, suggestion, strength, status) {
+function clearProgress() {
+    pendingTarget = null;
+    for (const block of progressBlocks) {
+        block.classList.remove('suggest-revising');
+        const button = block.querySelector('.suggest-revision-action');
+        button?.removeAttribute('aria-busy');
+        button?.setAttribute('aria-label', 'Suggest changes to this response');
+        if (button) button.title = 'Revise this response while preserving unaffected text';
+    }
+    progressBlocks.clear();
+}
+
+function setProgress(label) {
+    progressLabel = label;
+    refreshActions();
+}
+
+async function revise(target, suggestion, strength) {
     if (busy || active() || editing()) throw new Error('Finish generation or message editing before suggesting.');
     if (!targetUnchanged(target, context(), epoch)) throw new Error('The chat or selected response changed. Reopen Suggest.');
     busy = true;
-    refreshActions();
+    pendingTarget = target;
     try {
+        setProgress('Checking prompt size…');
         const ctx = context();
         const request = buildRevisionPrompt({ original: target.message.mes, suggestion, strength, reference: referenceFor(ctx, target.index) });
         const tokens = Math.max(256, Math.min(16384, Number(settings().tokens) || 4096));
-        status.textContent = 'Checking prompt size…';
         await checkBudget(ctx, request, tokens);
         if (!targetUnchanged(target, context(), epoch) || active() || editing()) throw new Error('The chat or selected response changed. Reopen Suggest.');
-        status.textContent = 'Revising response…';
+        setProgress('Revising response…');
         const started = Date.now();
         const reply = await ctx.generateRaw({ ...request, responseLength: tokens, trimNames: false });
         if (typeof reply !== 'string' || !reply.trim()) throw new Error('The AI returned an empty revision.');
         if (!targetUnchanged(target, context(), epoch) || active() || editing()) {
+            clearProgress();
             const preview = document.createElement('pre');
             preview.className = 'suggest-preview';
             preview.textContent = reply;
@@ -58,6 +79,7 @@ async function revise(target, suggestion, strength, status) {
         await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_SWIPED, target.index);
         notify('Revision saved as a new swipe. The original is still available.');
     } finally {
+        clearProgress();
         busy = false;
         refreshActions();
     }
@@ -89,14 +111,7 @@ async function openSuggest(index) {
         if (!input.value.trim()) return notify('Enter a suggestion first.', true);
         settings().strength = strength.value;
         ctx.saveSettingsDebounced();
-        // Native progress popup stays open until generation finishes.
-        const progress = document.createElement('p');
-        progress.textContent = 'Preparing revision…';
-        let finished = false;
-        const popup = new ctx.Popup(progress, ctx.POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, onClosing: () => finished });
-        const shown = popup.show();
-        try { await revise(target, input.value, strength.value, progress); }
-        finally { finished = true; await popup.complete(ctx.POPUP_RESULT.AFFIRMATIVE); await shown; }
+        await revise(target, input.value, strength.value);
     } catch (error) {
         notify(error?.message || 'Revision failed. The original response is retained.', true);
     }
@@ -104,6 +119,7 @@ async function openSuggest(index) {
 
 function refreshActions() {
     const ctx = context();
+    if (pendingTarget && !targetUnchanged(pendingTarget, ctx, epoch)) clearProgress();
     for (const block of document.querySelectorAll('#chat .mes[mesid]')) {
         const index = Number(block.getAttribute('mesid'));
         const message = ctx.chat[index];
@@ -124,6 +140,13 @@ function refreshActions() {
             host.prepend(button);
         }
         button.disabled = busy;
+        if (pendingTarget?.message === message && pendingTarget.index === index) {
+            block.classList.add('suggest-revising');
+            progressBlocks.add(block);
+            button.setAttribute('aria-busy', 'true');
+            button.setAttribute('aria-label', progressLabel);
+            button.title = progressLabel;
+        }
     }
 }
 
@@ -137,7 +160,12 @@ function initialize() {
     }
     document.querySelector('#extensions_settings')?.append(panel);
     ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, () => { epoch++; refreshActions(); });
-    ctx.eventSource.on(ctx.eventTypes.GENERATION_STARTED, (type, options, dryRun) => { if (!dryRun && type !== 'quiet') epoch++; });
+    ctx.eventSource.on(ctx.eventTypes.GENERATION_STARTED, (type, options, dryRun) => {
+        if (!dryRun && type !== 'quiet') { epoch++; refreshActions(); }
+    });
+    for (const name of ['MESSAGE_SWIPED', 'MESSAGE_EDITED', 'MESSAGE_DELETED', 'MESSAGE_RECEIVED', 'MESSAGE_SENT']) {
+        if (ctx.eventTypes[name]) ctx.eventSource.on(ctx.eventTypes[name], refreshActions);
+    }
     // Native message rendering/lazy loading can replace nodes without a chat event.
     const chat = document.querySelector('#chat');
     if (chat) new MutationObserver(refreshActions).observe(chat, { childList: true, subtree: true });
