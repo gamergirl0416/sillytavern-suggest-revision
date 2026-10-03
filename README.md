@@ -1,6 +1,6 @@
 # Suggest Revision v0.1.2
 
-A standalone SillyTavern extension for Kindroid-style targeted revision of an assistant response. **Minimal** is the default: the model is asked to change only what your suggestion requires and copy unaffected text verbatim. The complete revised reply becomes a new active swipe; the original stays recoverable.
+A standalone SillyTavern extension for targeted revision of an assistant response. **Minimal** is the default: the model is asked to change only what your suggestion requires and copy unaffected text verbatim. The complete revised reply becomes a new active swipe; the original stays recoverable.
 
 ## Install
 
